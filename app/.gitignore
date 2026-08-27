@@ -1,0 +1,9 @@
+# Ignore build directory
+build-t113/
+build-linux/
+
+# Ignore Qt Creator project files
+*.pro.user
+
+# Ignore Qt stash files
+.qmake.stash

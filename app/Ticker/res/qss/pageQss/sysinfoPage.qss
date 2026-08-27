@@ -1,0 +1,39 @@
+#SysinfoPage {
+	background: #000000;
+}
+
+#splitWidget {
+    background: white;
+}
+
+QPushButton#sysUpdateBtn,
+QPushButton#appUpdateBtn
+{
+    border-image: url(:/res/icon/pageIcon/sysinfoPage/update-normal.png);
+}
+
+QPushButton#sysUpdateBtn:pressed,
+QPushButton#appUpdateBtn:pressed
+{
+    border-image: url(:/res/icon/pageIcon/sysinfoPage/update-pressed.png);
+}
+
+#appVerLabel,
+#sysVerLabel,
+#cpuTempLabel,
+#sysRunTimeLabel {
+    color: white;
+}
+
+#titleLabel {
+    color: #2A82E4;
+}
+
+#title2Label {
+    color: white;
+}
+
+#titleBodyLabel {
+    color: #737373;
+}
+

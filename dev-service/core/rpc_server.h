@@ -1,0 +1,22 @@
+#ifndef RPC_SERVER_H
+#define RPC_SERVER_H
+
+#include "cJSON.h"
+
+#define MAX_RPC_MSG_SIZE 8192   // 最大 RPC 消息大小
+
+typedef struct {
+    int status;
+    char *msg;
+    char *data_json;
+} rpc_result_t;
+
+typedef int (*rpc_on_message_cb)(const char *request, int request_len, char **response);
+
+int rpc_server_init_uds(const char *path);
+void rpc_server_run(rpc_on_message_cb cb);
+void rpc_server_stop(void);
+int rpc_make_response(int status, const char *cmd, const char *msg, const char *data_json, char **resp);
+int rpc_make_error(char **resp, int status, const char *cmd, const char *msg);
+
+#endif // RPC_SERVER_H

@@ -1,0 +1,14 @@
+# Ignore build directory
+build/
+
+#  Ignore all object files
+*.o
+*.obj
+client-t113
+client-t527
+client-linux
+dev-service
+
+# Ignore log files and databases
+*.log
+*.db

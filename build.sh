@@ -1,0 +1,327 @@
+#/bin/sh
+
+# 顶层目录路径
+TOPDIR=$(pwd)
+
+# 编译输出目录
+OUTDIR=${TOPDIR}/out
+
+# 工具链相关路径
+PLATFORM=""
+TOOLCHAIN_TOPDIR=${TOPDIR}/toolchain
+# 全志官方交叉编译工具链
+EXTERNAL_TOOLCHAIN=/home/ubuntu/Downloads/toolchain-sunxi-glibc-gcc-830
+
+# 服务器代码路径
+SERVICE_DIR=${TOPDIR}/dev-service
+
+# 用于测试服务器的客户端代码路径
+CLIENT_TEST_DIR=${SERVICE_DIR}/test
+
+# qt客户端代码
+QT_DIR=${TOPDIR}/app
+# t113 平台的 Qt 交叉编译 qmake 路径（使用全志 Tina SDK 中预编译的 Qt，或自行交叉编译的 Qt）
+# 如果留空，编译 Qt 时会自动跳过
+# 常见位置: <Tina SDK>/out/host/... 或 /home/xxx/platform/t113/.../Qt-install-5.15.9/bin/qmake
+QMAKE_PATH_T113="/home/ubuntu/tina5.0/t113-v1.1/qt/qt-everywhere-src-5.15.9/qtbase/bin/qmake"
+QMAKE_PATH="/opt/qt/qtresource/qt5.15.9/bin/qmake"
+QT_PRJ_DIR=${QT_DIR}/Ticker
+
+# 默认值
+PLATFORM=""
+BUILD_SERVICE=0
+BUILD_CLIENT=0
+BUILD_QT=0
+DO_CLEAN=0
+PACK_APP=0
+
+log_info() 
+{
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() 
+{
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() 
+{
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+prepare_toolchain()
+{
+    if [ "${PLATFORM}" != "linux" ]; then
+        if [ "${PLATFORM}" = "t113" ]; then
+            if [ ! -d ${EXTERNAL_TOOLCHAIN} ]; then
+                log_error "External toolchain directory ${EXTERNAL_TOOLCHAIN} not found!"
+                exit 1
+            fi
+        elif [ ! -d ${TOOLCHAIN_TOPDIR}/${PLATFORM} ]; then
+            log_error "Toolchain directory ${TOOLCHAIN_TOPDIR}/${PLATFORM} not found!"
+            exit 1
+        fi
+    fi
+
+    if [ "${PLATFORM}" = "t113" ]; then
+        export ARCH=arm
+        export CROSS_COMPILE=arm-openwrt-linux-gnueabi-
+        export PATH=${EXTERNAL_TOOLCHAIN}/bin:$PATH
+        QMAKE_PATH="${QMAKE_PATH_T113}"
+    elif [ "${PLATFORM}" = "t527" ]; then
+        export ARCH=aarch64
+        export CROSS_COMPILE=aarch64-none-linux-gnu-
+        export PATH=$PATH:${TOPDIR}/toolchain/t527/bin
+        QMAKE_PATH=""
+    elif [ "${PLATFORM}" = "linux" ]; then
+        export ARCH=x86_64
+        export CROSS_COMPILE=""
+        QMAKE_PATH="/opt/qt/qtresource/qt5.15.9/bin/qmake"
+    else
+        log_error "Unsupported platform: ${PLATFORM}"
+        exit 1
+    fi
+}
+
+build_qt()
+{
+    log_info " =========================== Build QT Client for ${PLATFORM}... ==========================="
+
+    # 检查 qmake 是否存在
+    if [ ! -f ${QMAKE_PATH} ]; then
+        log_warn "qmake not found at ${QMAKE_PATH}, skipping QT build."
+        log_warn "Set QMAKE_PATH_T113 in build.sh to your Qt cross-compilation qmake path."
+        return 0
+    fi
+
+    # 检查项目工程是否存在
+    if [ ! -f ${QT_PRJ_DIR}/Ticker.pro ]; then
+        log_error "QT project file Ticker.pro not found!"
+        exit 1
+    fi
+
+    # 检查编译输出目录是否存在
+    if [ ! -d ${QT_DIR}/build-${PLATFORM} ]; then
+        mkdir ${QT_DIR}/build-${PLATFORM}
+    fi
+    rm -rf ${QT_DIR}/build-${PLATFORM}/*
+
+    cd ${QT_DIR}/build-${PLATFORM}
+    ${QMAKE_PATH} ${QT_PRJ_DIR}/Ticker.pro || {
+        log_error "qmake failed for ${PLATFORM}"
+        exit 1
+    }
+    make -j12 || {
+        log_error "make failed for ${PLATFORM}"
+        exit 1
+    }
+
+    if [ ! -e ${QT_DIR}/build-${PLATFORM}/Ticker ]; then
+        log_error "QT build output 'Ticker' not found at ${QT_DIR}/build-${PLATFORM}/"
+        exit 1
+    fi
+
+    # 复制编译结果到输出目录，并统一重命名为 Ticker-app
+    cp -r ${QT_DIR}/build-${PLATFORM}/Ticker ${OUTDIR}/Ticker-app
+
+    log_info " =========================== QT Client built successfully for ${PLATFORM} ==========================="
+}
+
+build_service()
+{
+    log_info " =========================== Build Service for ${PLATFORM}... ==========================="
+
+    if [ ! -d ${SERVICE_DIR} ]; then
+        log_error "Source directory ${SERVICE_DIR} not found!"
+        exit 1
+    fi
+
+    cd ${SERVICE_DIR}
+    make clean
+    make -j12
+
+    # 复制编译结果到输出目录，并统一重命名为 Ticker-service
+    cp ${SERVICE_DIR}/dev-service ${OUTDIR}/Ticker-service
+
+    log_info " =========================== Service built successfully for ${PLATFORM} ==========================="
+}
+
+build_client()
+{
+    log_info " =========================== Build Client Test for ${PLATFORM}... ==========================="
+
+    if [ ! -d ${SERVICE_DIR}/test ]; then
+        log_error "Source directory ${SERVICE_DIR}/test not found!"
+        exit 1
+    fi
+
+    cd ${SERVICE_DIR}/test
+    ${CROSS_COMPILE}gcc -o client-${PLATFORM} rpc_client.c
+
+    if [ -f client-${PLATFORM} ]; then
+        mv client-${PLATFORM} ${SERVICE_DIR}
+    else
+        log_error "Failed to build Client Test."
+        exit 1
+    fi
+
+    # 复制编译结果到输出目录，并统一重命名为 Ticker-client-test
+    cp ${SERVICE_DIR}/client-${PLATFORM} ${OUTDIR}/Ticker-client-test
+
+    log_info " =========================== Client Test built successfully for ${PLATFORM} ==========================="
+}
+
+build_pack() 
+{
+    log_info " =========================== Packing Application... ==========================="
+
+    cd ${OUTDIR} || exit 1
+
+    # 删除旧源码目录
+    if ls app_* 1> /dev/null 2>&1; then
+        rm -rf app_*
+    fi
+
+    # 删除旧打包文件
+    if ls app-*.tar 1> /dev/null 2>&1; then
+        rm -f app-*.tar
+    fi
+
+    # 获取最近 tag
+    GIT_TAG=$(git describe --tags --abbrev=0)
+
+    # 获取当前提交到 tag 的提交数
+    DIST=$(git rev-list ${GIT_TAG}..HEAD --count)
+
+    # 去掉 tag 最后的 .0
+    TAG_BASE=${GIT_TAG%.*}
+
+    # 生成最终版本号 vX.Y.N
+    if [ "$DIST" -gt 0 ]; then
+        VERSION="${TAG_BASE}.${DIST}"
+    else
+        VERSION="${GIT_TAG}"
+    fi
+
+    log_info "Packing version: ${VERSION}"
+
+    # 创建源码目录
+    APP_SRC_NAME="app_${VERSION}"
+    mkdir -p ${APP_SRC_NAME}/bin
+
+    # 检查编译结果
+    if [ ! -f Ticker-service ] || [ ! -f Ticker-app ]; then
+        log_error "Build outputs not found. Please build the application before packing."
+        exit 1
+    fi
+
+    # 复制编译结果
+    cp -r Ticker-service ${APP_SRC_NAME}/bin
+    cp -r Ticker-app ${APP_SRC_NAME}/bin
+
+    # 打包
+    TAR_NAME="app_${VERSION}.tar"
+    tar -cf ${TAR_NAME} ${APP_SRC_NAME}
+    rm -rf ${APP_SRC_NAME}
+
+    log_info " =========================== Application packed successfully: ${TAR_NAME} ==========================="
+}
+
+show_help()
+{
+    echo "Usage: ./build.sh [platform] [options]"
+    echo "  Platforms:"
+    echo "    -t113          Build for t113 platform"
+    echo "    -t527          Build for t527 platform"
+    echo "    -linux         Build for Linux platform"
+    echo "  Options:"
+    echo "    -service       Build only the service"
+    echo "    -client        Build only the client test"
+    echo "    -qt            Build only the QT client"
+    echo "    -all           Build service, client test, and QT client (default)"
+    echo "    -pack          Package the built application into a tar.gz file"
+    echo "    -clean         Clean build outputs for the specified platform"
+    echo "    -h, --help     Show this help message"
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -t113)
+            PLATFORM="t113"
+            ;;
+        -t527)
+            PLATFORM="t527"
+            ;;
+        -linux)
+            PLATFORM="linux"
+            ;;
+        -service)
+            BUILD_SERVICE=1
+            ;;
+        -client)
+            BUILD_CLIENT=1
+            ;;
+        -qt)
+            BUILD_QT=1
+            ;;
+        -all)
+            BUILD_SERVICE=1
+            BUILD_CLIENT=1
+            BUILD_QT=1
+            ;;
+        -pack)
+            PACK_APP=1
+            ;;
+        -clean)
+            DO_CLEAN=1
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ -z "${PLATFORM}" ]; then
+    log_error "No platform specified. Use -t113 | -t527 | -linux"
+    exit 1
+fi
+
+# 目前 t527 不支持 QT 编译
+if [ "${PLATFORM}" == "t527" ] && [ ${BUILD_QT} -eq 1 ]; then
+    log_warn "QT build is not supported for t527 platform. Skipping QT build."
+    BUILD_QT=0
+fi
+
+if [ ${DO_CLEAN} -eq 1 ]; then
+    log_info "Cleaning build outputs for platform ${PLATFORM}"
+
+    cd ${SERVICE_DIR} && make clean
+
+    rm -f ${SERVICE_DIR}/client-${PLATFORM}
+
+    rm -rf ${QT_DIR}/build-${PLATFORM}
+
+    exit 0
+fi
+
+prepare_toolchain
+
+# 检查并创建输出目录
+if [ ! -d ${OUTDIR} ]; then
+    mkdir ${OUTDIR}
+fi
+
+[ ${BUILD_SERVICE} -eq 1 ] && build_service
+[ ${BUILD_CLIENT}  -eq 1 ] && build_client
+[ ${BUILD_QT}      -eq 1 ] && build_qt
+
+log_info "Build finished successfully for ${PLATFORM}"
+
+[ ${PACK_APP}      -eq 1 ] && build_pack

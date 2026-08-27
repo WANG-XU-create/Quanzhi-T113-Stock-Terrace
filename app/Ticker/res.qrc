@@ -1,0 +1,46 @@
+<RCC>
+    <qresource prefix="/">
+        <file>res/icon/menuIcon/home.png</file>
+        <file>res/icon/menuIcon/setting.png</file>
+        <file>res/icon/menuIcon/sysinfo.png</file>
+        <file>res/icon/menuIcon/wifi.png</file>
+        <file>res/icon/staBarIcon/soundOff.png</file>
+        <file>res/icon/staBarIcon/soundOn.png</file>
+        <file>res/icon/staBarIcon/wifiConnect.png</file>
+        <file>res/icon/staBarIcon/wifiDisconnect.png</file>
+        <file>res/font/AlimamaShuHeiTi-Bold.ttf</file>
+        <file>res/icon/pageIcon/homePage/add.png</file>
+        <file>res/icon/pageIcon/settingPage/brightness.png</file>
+        <file>res/icon/pageIcon/settingPage/left.png</file>
+        <file>res/icon/pageIcon/settingPage/refreshTime.png</file>
+        <file>res/icon/pageIcon/settingPage/right.png</file>
+        <file>res/icon/pageIcon/settingPage/volume.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/ip.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/runtime.png</file>
+        <file>res/qss/pageQss/settingPage.qss</file>
+        <file>res/qss/mainFrameQss/mainFrame.qss</file>
+        <file>res/icon/pageIcon/wifiPage/wifi-0.png</file>
+        <file>res/icon/pageIcon/wifiPage/wifi-1.png</file>
+        <file>res/icon/pageIcon/wifiPage/wifi-2.png</file>
+        <file>res/icon/pageIcon/wifiPage/wifi-3.png</file>
+        <file>res/icon/pageIcon/wifiPage/wifi-4.png</file>
+        <file>res/qss/pageQss/wifiConnPage.qss</file>
+        <file>res/qss/pageQss/wifiStaPage.qss</file>
+        <file>res/icon/pageIcon/wifiPage/clear-normal.png</file>
+        <file>res/icon/pageIcon/wifiPage/clear-pressed.png</file>
+        <file>res/icon/pageIcon/wifiPage/pwd.png</file>
+        <file>res/icon/pageIcon/wifiPage/ssid.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/cputemp.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/version-app.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/version-sys.png</file>
+        <file>res/qss/pageQss/sysinfoPage.qss</file>
+        <file>res/icon/pageIcon/sysinfoPage/update-normal.png</file>
+        <file>res/icon/pageIcon/sysinfoPage/update-pressed.png</file>
+        <file>res/icon/pageIcon/homePage/greenCir.png</file>
+        <file>res/icon/pageIcon/homePage/redCir.png</file>
+        <file>res/qss/pageQss/homePage.qss</file>
+        <file>res/qss/pageQss/stockBlock.qss</file>
+        <file>res/icon/pageIcon/homePage/grayCir.png</file>
+        <file>res/icon/pageIcon/homePage/orangeCir.png</file>
+    </qresource>
+</RCC>
